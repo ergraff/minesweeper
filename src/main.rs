@@ -59,9 +59,11 @@ impl Board {
                     false => print!("| "),
                 }
                 // Cell content
-                match self.mines[i][j] {
-                    true => print!("x"),
-                    false => print!(" "),
+                match self.cells[i][j] {
+                    State::Unrevealed => print!("."),
+                    State::Revealed(v) => print!("{v}"),
+                    State::Flagged => print!("F"),
+                    State::Mined => print!("x"),
                 }
                 // Right border
                 match (i, j) == self.position {
@@ -74,6 +76,51 @@ impl Board {
         line();
         // Print info to user
         println!("Arrow keys to move, <a> to reveal cell, <f> to place flag, <Esc> to quit.");
+    }
+
+    fn count_neighbors(&self) -> u8 {
+        let mut sum: u8 = 0;
+        for i in [-1, 0, 1].into_iter() {
+            for j in [-1, 0, 1].into_iter() {
+                if i == 0 && j == 0 {
+                    continue;
+                }
+                let new_i = self.position.0 as i32 + i;
+                let new_j = self.position.1 as i32 + j;
+                let bounded =
+                    (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+                let is_mine = self.mines[new_i as usize][new_j as usize] == true;
+                if bounded && is_mine {
+                    sum += 1;
+                }
+            }
+        }
+        sum
+    }
+
+    fn flood_empty(&mut self) {}
+
+    fn evaluate_cell(&mut self) -> Option<bool> {
+        let mut result = Some(true);
+        let mined = self.mines[self.position.0][self.position.1];
+        let count = self.count_neighbors();
+        match (mined, count) {
+            // Mined, end game
+            (true, _) => {
+                self.cells[self.position.0][self.position.1] = State::Mined;
+                result = None;
+            }
+            // Not mined, continue
+            (false, 0) => {
+                self.flood_empty();
+                // Do something else?
+                // todo!();
+            }
+            (false, _) => {
+                self.cells[self.position.0][self.position.1] = State::Revealed(count);
+            }
+        }
+        result
     }
 
     fn player_action(&mut self, key: console::Key) -> Option<bool> {
@@ -103,11 +150,11 @@ impl Board {
                 Some(true)
             }
             console::Key::Char('a') => {
-                println!("Select key");
-                Some(true)
+                let game_continue = self.evaluate_cell();
+                game_continue
             }
             console::Key::Char('f') => {
-                println!("Flag key");
+                self.cells[self.position.0][self.position.1] = State::Flagged;
                 Some(true)
             }
             console::Key::Escape => None,
@@ -141,5 +188,6 @@ fn main() {
             }
         }
     }
+    board.print();
     println!("Game ended.");
 }
