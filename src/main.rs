@@ -1,18 +1,44 @@
 use console::Term;
+use rand::Rng;
 
 const SIZE: usize = 20;
+const DIFFICULTY: usize = 1;
+const DIFFICULTY_OFFSET: usize = 8;
 
-struct Map {
-    map: Vec<Vec<bool>>,
+#[derive(Clone)]
+enum State {
+    Unrevealed,
+    Revealed(u8),
+    Flagged,
+    Mined,
+}
+
+struct Board {
+    mines: Vec<Vec<bool>>,
+    cells: Vec<Vec<State>>,
     position: (usize, usize),
 }
 
-impl Map {
+impl Board {
     fn new() -> Self {
-        Map {
-            map: vec![vec![false; SIZE]; SIZE],
+        Board {
+            mines: vec![vec![false; SIZE]; SIZE],
+            cells: vec![vec![State::Unrevealed; SIZE]; SIZE],
             position: (0, 0),
         }
+    }
+
+    fn randomize(mut self) -> Self {
+        let mut rng = rand::thread_rng();
+        for i in 0..SIZE {
+            for j in 0..SIZE {
+                let r = rng.gen_range(0..(DIFFICULTY_OFFSET - DIFFICULTY));
+                if r == 0 {
+                    self.mines[i][j] = true;
+                }
+            }
+        }
+        self
     }
 
     fn print(&self) {
@@ -33,7 +59,7 @@ impl Map {
                     false => print!("| "),
                 }
                 // Cell content
-                match self.map[i][j] {
+                match self.mines[i][j] {
                     true => print!("x"),
                     false => print!(" "),
                 }
@@ -92,17 +118,18 @@ impl Map {
 
 fn main() {
     let stdout = Term::buffered_stdout();
-    let mut map = Map::new();
+    let mut board = Board::new().randomize();
+
     // Main game loop
     let mut running = true;
     while running {
         // Print map
-        map.print();
+        board.print();
 
         // Read key
         loop {
             if let Ok(key) = stdout.read_key() {
-                let legal = map.player_action(key);
+                let legal = board.player_action(key);
                 match legal {
                     Some(true) => break,
                     Some(false) => {}
@@ -114,4 +141,5 @@ fn main() {
             }
         }
     }
+    println!("Game ended.");
 }
