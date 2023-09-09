@@ -46,7 +46,7 @@ impl Board {
             for _ in 0..SIZE {
                 print!("+ - ");
             }
-            print!("+\n");
+            println!("+");
         }
 
         print!("\x1B[2J\x1B[1;1H");
@@ -61,6 +61,7 @@ impl Board {
                 // Cell content
                 match self.cells[i][j] {
                     State::Unrevealed => print!("."),
+                    State::Revealed(0) => print!(" "),
                     State::Revealed(v) => print!("{v}"),
                     State::Flagged => print!("F"),
                     State::Mined => print!("x"),
@@ -71,7 +72,7 @@ impl Board {
                     false => print!(" "),
                 }
             }
-            print!("|\n");
+            println!("|");
         }
         line();
         // Print info to user
@@ -89,8 +90,7 @@ impl Board {
                 let new_j = self.position.1 as i32 + j;
                 let bounded =
                     (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
-                let is_mine = self.mines[new_i as usize][new_j as usize] == true;
-                if bounded && is_mine {
+                if bounded && self.mines[new_i as usize][new_j as usize] == true {
                     sum += 1;
                 }
             }
@@ -104,20 +104,14 @@ impl Board {
         let mut result = Some(true);
         let mined = self.mines[self.position.0][self.position.1];
         let count = self.count_neighbors();
-        match (mined, count) {
-            // Mined, end game
-            (true, _) => {
-                self.cells[self.position.0][self.position.1] = State::Mined;
-                result = None;
-            }
-            // Not mined, continue
-            (false, 0) => {
+        let cell = &mut self.cells[self.position.0][self.position.1];
+        if mined {
+            *cell = State::Mined;
+            result = None;
+        } else {
+            *cell = State::Revealed(count);
+            if count == 0 {
                 self.flood_empty();
-                // Do something else?
-                // todo!();
-            }
-            (false, _) => {
-                self.cells[self.position.0][self.position.1] = State::Revealed(count);
             }
         }
         result
@@ -149,12 +143,14 @@ impl Board {
                 }
                 Some(true)
             }
-            console::Key::Char('a') => {
-                let game_continue = self.evaluate_cell();
-                game_continue
-            }
+            console::Key::Char('a') => self.evaluate_cell(),
             console::Key::Char('f') => {
-                self.cells[self.position.0][self.position.1] = State::Flagged;
+                let cell = &mut self.cells[self.position.0][self.position.1];
+                match *cell {
+                    State::Unrevealed => *cell = State::Flagged,
+                    State::Flagged => *cell = State::Unrevealed,
+                    _ => {}
+                }
                 Some(true)
             }
             console::Key::Escape => None,
