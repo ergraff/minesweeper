@@ -5,6 +5,8 @@ const SIZE: usize = 20;
 const DIFFICULTY: usize = 1;
 const DIFFICULTY_OFFSET: usize = 8;
 
+type Pos = (usize, usize);
+
 #[derive(Clone)]
 enum State {
     Unrevealed,
@@ -16,7 +18,7 @@ enum State {
 struct Board {
     mines: Vec<Vec<bool>>,
     cells: Vec<Vec<State>>,
-    position: (usize, usize),
+    position: Pos,
 }
 
 impl Board {
@@ -79,15 +81,15 @@ impl Board {
         println!("Arrow keys to move, <a> to reveal cell, <f> to place flag, <Esc> to quit.");
     }
 
-    fn count_neighbors(&self) -> u8 {
+    fn count_neighbors_at(&self, pos: Pos) -> u8 {
         let mut sum: u8 = 0;
         for i in [-1, 0, 1].into_iter() {
             for j in [-1, 0, 1].into_iter() {
                 if i == 0 && j == 0 {
                     continue;
                 }
-                let new_i = self.position.0 as i32 + i;
-                let new_j = self.position.1 as i32 + j;
+                let new_i = pos.0 as i32 + i;
+                let new_j = pos.1 as i32 + j;
                 let bounded =
                     (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
                 if bounded && self.mines[new_i as usize][new_j as usize] == true {
@@ -98,20 +100,88 @@ impl Board {
         sum
     }
 
-    fn flood_empty(&mut self) {}
+    fn flood_empty(&mut self) {
+        fn neighbors(pos: Pos) -> Vec<Pos> {
+            let mut result = vec![];
+            // Up
+            let new_i = pos.0 as i32;
+            let new_j = pos.1 as i32 - 1;
+            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+            if bounded {
+                result.push((new_i as usize, new_j as usize));
+            }
+
+            // Down
+            let new_i = pos.0 as i32;
+            let new_j = pos.1 as i32 + 1;
+            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+            if bounded {
+                result.push((new_i as usize, new_j as usize));
+            }
+
+            // Left
+            let new_i = pos.0 as i32 - 1;
+            let new_j = pos.1 as i32;
+            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+            if bounded {
+                result.push((new_i as usize, new_j as usize));
+            }
+
+            // Right
+            let new_i = pos.0 as i32 + 1;
+            let new_j = pos.1 as i32;
+            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+            if bounded {
+                result.push((new_i as usize, new_j as usize));
+            }
+
+            result
+        }
+
+        // Initial positions
+        let mut to_be_checked = neighbors(self.position);
+        let mut visited = vec![self.position];
+
+        while !to_be_checked.is_empty() {
+            let mut next_neighbors = vec![];
+            for pos in &to_be_checked {
+                let count = self.count_neighbors_at(*pos);
+                let mined = self.mines[pos.0][pos.1];
+                match (count, mined) {
+                    (_, true) => continue,
+                    (0, false) => {
+                        // New neighbors to be checked that have not been visited
+                        let mut neighbors = neighbors(*pos);
+                        neighbors.retain(|p| visited.contains(p) == false);
+                        next_neighbors.append(&mut neighbors);
+                    }
+                    _ => {}
+                }
+                self.cells[pos.0][pos.1] = State::Revealed(count);
+                visited.push(*pos);
+            }
+            // Remove visited positions
+            to_be_checked.retain(|p| visited.contains(p) == false);
+            // Append positions to be checked next
+            to_be_checked.append(&mut next_neighbors);
+        }
+    }
 
     fn evaluate_cell(&mut self) -> Option<bool> {
         let mut result = Some(true);
         let mined = self.mines[self.position.0][self.position.1];
-        let count = self.count_neighbors();
+        let count = self.count_neighbors_at(self.position);
         let cell = &mut self.cells[self.position.0][self.position.1];
-        if mined {
-            *cell = State::Mined;
-            result = None;
-        } else {
-            *cell = State::Revealed(count);
-            if count == 0 {
-                self.flood_empty();
+        match mined {
+            true => {
+                *cell = State::Mined;
+                result = None;
+            }
+            false => {
+                *cell = State::Revealed(count);
+                if count == 0 {
+                    self.flood_empty();
+                }
             }
         }
         result
