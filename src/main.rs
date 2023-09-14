@@ -101,45 +101,27 @@ impl Board {
     }
 
     fn flood_empty(&mut self) {
-        fn neighbors(pos: Pos) -> Vec<Pos> {
+        fn get_neighbor_positions(pos: Pos) -> Vec<Pos> {
             let mut result = vec![];
-            // Up
-            let new_i = pos.0 as i32;
-            let new_j = pos.1 as i32 - 1;
-            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
-            if bounded {
-                result.push((new_i as usize, new_j as usize));
+            for i in [-1, 0, 1].into_iter() {
+                for j in [-1, 0, 1].into_iter() {
+                    if i == 0 && j == 0 {
+                        continue;
+                    }
+                    let new_i = pos.0 as i32 + i;
+                    let new_j = pos.1 as i32 + j;
+                    let bounded =
+                        (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
+                    if bounded {
+                        result.push((new_i as usize, new_j as usize));
+                    }
+                }
             }
-
-            // Down
-            let new_i = pos.0 as i32;
-            let new_j = pos.1 as i32 + 1;
-            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
-            if bounded {
-                result.push((new_i as usize, new_j as usize));
-            }
-
-            // Left
-            let new_i = pos.0 as i32 - 1;
-            let new_j = pos.1 as i32;
-            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
-            if bounded {
-                result.push((new_i as usize, new_j as usize));
-            }
-
-            // Right
-            let new_i = pos.0 as i32 + 1;
-            let new_j = pos.1 as i32;
-            let bounded = (0..SIZE as i32).contains(&new_i) && (0..SIZE as i32).contains(&new_j);
-            if bounded {
-                result.push((new_i as usize, new_j as usize));
-            }
-
             result
         }
 
         // Initial positions
-        let mut to_be_checked = neighbors(self.position);
+        let mut to_be_checked = get_neighbor_positions(self.position);
         let mut visited = vec![self.position];
 
         while !to_be_checked.is_empty() {
@@ -151,8 +133,8 @@ impl Board {
                     (_, true) => continue,
                     (0, false) => {
                         // New neighbors to be checked that have not been visited
-                        let mut neighbors = neighbors(*pos);
-                        neighbors.retain(|p| visited.contains(p) == false);
+                        let mut neighbors = get_neighbor_positions(*pos);
+                        neighbors.retain(|p| !visited.contains(p));
                         next_neighbors.append(&mut neighbors);
                     }
                     _ => {}
@@ -161,7 +143,7 @@ impl Board {
                 visited.push(*pos);
             }
             // Remove visited positions
-            to_be_checked.retain(|p| visited.contains(p) == false);
+            to_be_checked.retain(|p| !visited.contains(p));
             // Append positions to be checked next
             to_be_checked.append(&mut next_neighbors);
         }
