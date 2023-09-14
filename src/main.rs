@@ -62,7 +62,7 @@ impl Board {
                 }
                 // Cell content
                 match self.cells[i][j] {
-                    State::Unrevealed => print!("."),
+                    State::Unrevealed => print!("░"),
                     State::Revealed(0) => print!(" "),
                     State::Revealed(v) => print!("{v}"),
                     State::Flagged => print!("F"),
