@@ -209,6 +209,18 @@ impl Board {
             _ => Some(false),
         }
     }
+
+    fn game_finished(&self) -> bool {
+        for i in 0..SIZE {
+            for j in 0..SIZE {
+                match (self.mines[i][j], &self.cells[i][j]) {
+                    (false, State::Unrevealed) => return false,
+                    _ => {}
+                }
+            }
+        }
+        true
+    }
 }
 
 fn main() {
@@ -234,6 +246,11 @@ fn main() {
                     }
                 }
             }
+        }
+
+        // Check if game is over
+        if board.game_finished() {
+            break;
         }
     }
     board.print();
