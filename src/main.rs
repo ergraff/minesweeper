@@ -1,4 +1,4 @@
-use console::Term;
+use console::{style, Term};
 use rand::Rng;
 
 const SIZE: usize = 20;
@@ -46,9 +46,9 @@ impl Board {
     fn print(&self) {
         fn line() {
             for _ in 0..SIZE {
-                print!("+ - ");
+                print!("{}", style("+ - ").dim());
             }
-            println!("+");
+            println!("{}", style("+").dim());
         }
 
         print!("\x1B[2J\x1B[1;1H");
@@ -57,15 +57,25 @@ impl Board {
             for j in 0..SIZE {
                 // Left border
                 match (i, j) == self.position {
-                    true => print!("||"),
-                    false => print!("| "),
+                    true => print!("{}|", style("|").dim()),
+                    false => print!("{} ", style("|").dim()),
                 }
                 // Cell content
                 match self.cells[i][j] {
-                    State::Unrevealed => print!("░"),
+                    State::Unrevealed => print!("▒"),
                     State::Revealed(0) => print!(" "),
-                    State::Revealed(v) => print!("{v}"),
-                    State::Flagged => print!("F"),
+                    State::Revealed(v) => match v {
+                        1 => print!("{}", style("1").cyan()),
+                        2 => print!("{}", style("2").green()),
+                        3 => print!("{}", style("3").red()),
+                        4 => print!("{}", style("4").blue()),
+                        5 => print!("{}", style("5").red()),
+                        6 => print!("{}", style("6").blue()),
+                        7 => print!("{}", style("7").black()),
+                        8 => print!("{}", style("8").white()),
+                        _ => {}
+                    },
+                    State::Flagged => print!("{}", style("F").red().dim()),
                     State::Mined => print!("x"),
                 }
                 // Right border
